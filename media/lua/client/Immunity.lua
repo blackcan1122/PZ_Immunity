@@ -18,19 +18,25 @@ local function updateInfectionLevel(...)
     print (tostring(InfectionLevel))
 end
 
+local MyInfoPanel = ISPanel:derive("InfoPanel")
+
+function MyInfoPanel:new(x, y, width, height)
+    local o = ISPanel:new(x, y, width, height)
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
+
+
+function MyInfoPanel:render()
+    ISPanel.render(self)
+    self:drawText("Infection Level: " .. string.format("%.2f", InfectionLevel), 0, 0, 1, 1, 1, 1, UIFont.Small)
+end
 
 function ISCharacterScreen:createChildren()
     original_createChildren(self)
-    
-    -- Add your custom information here
-    local y = self.height
-    local customLabel = ISLabel:new(250, y, 20, "Custom Info:", 1, 1, 1, 1, UIFont.Small, true)
-    self:addChild(customLabel)
-    
-    
-    y = y + 20
-    local infoLabel = ISLabel:new(250, y, 20, tostring(InfectionLevel) , 1, 1, 1, 1, UIFont.Small, true)
-    self:addChild(infoLabel)
+    local infoPanel = MyInfoPanel:new(170, 200, 150, 20)
+    self:addChild(infoPanel)
 end
 
 local original_prerender = ISCharacterScreen.prerender
