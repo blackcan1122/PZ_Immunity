@@ -1,4 +1,4 @@
-Sandbox_EN = {
+Sandbox_DE = {
     Sandbox_Immunity = "ImmunityMod",
     Sandbox_Immunity_InitialChance = "BLABLABLA"
     Sandbox_Immunity_Multiplier = "The Multiplier which will be used to calculate the possible immunity"

@@ -1,4 +1,0 @@
-Sandbox_DE = {
-    Sandbox_Immunity = "ImmunityMod",
-    Sandbox_Immunity_TEST = "BLABLABLA"
-}
