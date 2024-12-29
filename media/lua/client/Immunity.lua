@@ -31,21 +31,22 @@ local function InitPlayer(playernum, player)
 
     local BodyDamage = player:getBodyDamage()
     local BodyParts = BodyDamage:getBodyParts()
-
-    
-    for i=1, BodyParts:size()-1 do
-        ScratchTable[BodyDamage:getBodyPartName(i)] = createStruct(0,false)
-    end
-
     local playertable = player:getModData()
+
     if playertable.ImmunityTable == nil then
+        for i=1, BodyParts:size()-1 do
+            ScratchTable[BodyDamage:getBodyPartName(i)] = createStruct(0,false)
+        end
         playertable.ImmunityTable = ScratchTable
     end 
+
+    if playertable.ImmunityLevel == nil then
+        playertable.ImmunityLevel = SandboxVars.Immunity.InitialChance
+    end
 end
 
 local function updateInfectionLevel(...)
     InfectionLevel = getPlayer():getBodyDamage():getInfectionLevel()
-    print (tostring(InfectionLevel))
 end
 
 local original_createChildren = ISCharacterScreen.createChildren
@@ -78,6 +79,7 @@ function ISCharacterScreen:prerender()
     updateInfectionLevel()
 end
 
+
 local function SetSandboxSettings()
     MULTIPLIER = SandboxVars.Immunity.Multiplier
     if MULTIPLIER == nil then
@@ -91,53 +93,75 @@ local function SetSandboxSettings()
     print("SandboxVars were initialised with STARTCHANCE: ", STARTCHANCE, "And Multiplier: ", MULTIPLIER)
 end
 
-
-
-local function CalculateImmunity(Character, DamageType, Damage)
+---@type Callback_OnPlayerUpdate
+local function CheckIfHealed(Character)
     updateInfectionLevel()
-    if Character ~= getPlayer() then
-        print ("No Valid Character")
-        return
-    end
-    -- if Character:getAttackedBy() ~= nil then
-    --     if Character:getAttackedBy():isZombie() == false then
-    --         print ("no Zombie")
-    --        return
-    --     end
-    -- end
 
     local Character = getPlayer() 
     local BodyDamage = Character:getBodyDamage()
     local BodyParts = BodyDamage:getBodyParts()
     local PlayerScratchTable = Character:getModData().ImmunityTable
+    local PlayerImmunityLevel = Character:getModData().ImmunityLevel
+
+    if BodyDamage:isInfected() == true then
+        math.randomseed(GameTime:getHoursSurvived())
+        local randomFloat = math.random()
+        if (randomFloat < PlayerImmunityLevel) then
+            BodyDamage:setInfected(false)
+            BodyDamage:setIsFakeInfected(true)
+            Character:SayDebug("Fake Infected")
+        end
+    end
 
     if PlayerScratchTable == nil then
         Character:Say("Table was Nil")
         return
     end
 
-    
-    for i=1, BodyParts:size()-1 do
-        if BodyDamage:IsScratched(i) == true then
-            Character:Say("Im Scratched")
-            if PlayerScratchTable[BodyDamage:getBodyPartName(i)].flag ~= true then
-                PlayerScratchTable[BodyDamage:getBodyPartName(i)].flag = true
-                PlayerScratchTable[BodyDamage:getBodyPartName(i)].counter = PlayerScratchTable[BodyDamage:getBodyPartName(i)].counter+1
-                ScratchCounter = ScratchCounter +1
-                Character:Say("Increasing Counter")
-            else
-                if PlayerScratchTable[BodyDamage:getBodyPartName(i)].flag ~= true then
-                    PlayerScratchTable[BodyDamage:getBodyPartName(i)].flag = false
-                    Character:Say("Scratch Gone")
-                end
-            end            
-        end    
+    if PlayerImmunityLevel == nil then
+        Character:Say("Player ImmunityLevel is Nil")
+        return
     end
 
+    for i=1, BodyParts:size()-1 do
+        if PlayerScratchTable[BodyDamage:getBodyPartName(i)] == nil then
+            Character:Say("ScratchTable at Index ".. i .. " Was nil")
+        end
+        local BodyPartName = BodyDamage:getBodyPartName(i)
+
+        if BodyDamage:IsScratched(i) == true then
+            if PlayerScratchTable[BodyPartName].flag ~= true then
+                PlayerScratchTable[BodyPartName].flag = true
+                PlayerScratchTable[BodyPartName].counter = PlayerScratchTable[BodyPartName].counter+1
+                ScratchCounter = ScratchCounter +1
+                Character:Say("Increasing Counter")
+                Character:Say("Setting Flag to " .. tostring(PlayerScratchTable[BodyPartName].flag) .. " for bodypart " .. tostring(BodyPartName))
+                Character:Say("The new ImmunityLevel should be " .. tostring(PlayerImmunityLevel * MULTIPLIER))
+                PlayerImmunityLevel = PlayerImmunityLevel * MULTIPLIER
+                Character:Say("New Immunity Level is: " .. PlayerImmunityLevel .. "and Multiplier is: " .. MULTIPLIER)
+
+            end            
+        else
+            if PlayerScratchTable[BodyPartName].flag == true then
+                PlayerScratchTable[BodyPartName].flag = false
+                Character:Say("Setting Flag to " .. tostring(PlayerScratchTable[BodyPartName].flag) .. " for bodypart " .. tostring(BodyPartName))
+            end
+        end 
+    
+    end
 end
 
 
+---@type Callback_OnKeyPressed
+local function DebugPrint(key)
+    print(key)
+    if (key == 67) then
+        local table = getPlayer():getModData().ImmunityTable
+        print(table["Pups"].flag)
+    end
+end
 
 Events.OnGameStart.Add(SetSandboxSettings)
-Events.OnPlayerGetDamage.Add(CalculateImmunity)
 Events.OnCreatePlayer.Add(InitPlayer)
+Events.OnPlayerUpdate.Add(CheckIfHealed)
+Events.OnKeyPressed.Add(DebugPrint)
