@@ -6,24 +6,41 @@ require "ISUI/ISCharacterScreen"
 require "ISUI/ISPanelJoypad"
 require ('ISUI/ISPanelJoypad')
 require('ISUI/ISCharacterScreen')
+require('math')
+
+----------------------- SETUP -------------------------------------
 
 local MULTIPLIER, STARTCHANCE
 
 
-
-local InfectionLevel
-local overallImmunity
-
 local ScratchTable = {}
 local ScratchCounter = 0
 
--- Define a struct creation function
+-- Struct to use in a Table
 local function createStruct(counter, flag)
     return {
         counter = counter,
         flag = flag
     }
 end
+
+--- Function to update the ScratchCount
+---@param Character IsoGameCharacter
+---@param DamageType? string
+---@param Damage? number
+local function UpdateScratchCount(Character, DamageType, Damage)
+    ---@type table<string, {counter: number, flag: boolean}>
+        local ImmunityTable = Character:getModData().ImmunityTable
+        if ImmunityTable == nil then
+            Character:SayDebug("ImmunityTable is Nil")
+            return
+        end
+        ScratchCounter = 0
+    
+        for v,k in pairs(ImmunityTable) do
+            ScratchCounter = ScratchCounter + k.counter
+        end
+    end
 
 --- we need to attach the ScratchTable to the player to keep track how many times it has been scratched and to check if we increase the counter
 ---@type Callback_OnCreatePlayer
@@ -41,14 +58,13 @@ local function InitPlayer(playernum, player)
     end 
 
     if playertable.ImmunityLevel == nil then
-        playertable.ImmunityLevel = SandboxVars.Immunity.InitialChance
+        playertable.ImmunityLevel = STARTCHANCE
     end
-end
 
-local function updateInfectionLevel(...)
-    InfectionLevel = getPlayer():getBodyDamage():getInfectionLevel()
+    UpdateScratchCount(player)
 end
-
+----------------------- SETUP END -------------------------------------
+----------------------- UI -------------------------------------
 local original_createChildren = ISCharacterScreen.createChildren
 
 local MyInfoPanel = ISPanel:derive("InfoPanel")
@@ -63,8 +79,8 @@ end
 
 function MyInfoPanel:render()
     ISPanel.render(self)
-    self:drawText("Infection Level: " .. string.format("%.2f", InfectionLevel), 0, 0, 1, 1, 1, 1, UIFont.Small)
-    self:drawText("Infection Level: " .. string.format("%.2f", ScratchCounter), 0, 10, 1, 1, 1, 1, UIFont.Small)
+    self:drawText("ImmunityLevel: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel), 0, 0, 1, 1, 1, 1, UIFont.Small)
+    self:drawText("ScratchCounter: " .. tostring(ScratchCounter), 0, 10, 1, 1, 1, 1, UIFont.Small)
 end
 
 function ISCharacterScreen:createChildren()
@@ -73,11 +89,15 @@ function ISCharacterScreen:createChildren()
     self:addChild(infoPanel)
 end
 
-local original_prerender = ISCharacterScreen.prerender
-function ISCharacterScreen:prerender()
-    original_prerender(self)
-    updateInfectionLevel()
-end
+----------------------- UI END -------------------------------------
+
+-------------------------------------------------------------------------------------------------------------------
+--- right now not needed, if we ever need to update something in synch with the UI we could call the functions here
+-- local original_prerender = ISCharacterScreen.prerender
+-- function ISCharacterScreen:prerender()
+--     original_prerender(self)
+-- end
+-------------------------------------------------------------------------------------------------------------------
 
 
 local function SetSandboxSettings()
@@ -93,75 +113,98 @@ local function SetSandboxSettings()
     print("SandboxVars were initialised with STARTCHANCE: ", STARTCHANCE, "And Multiplier: ", MULTIPLIER)
 end
 
----@type Callback_OnPlayerUpdate
-local function CheckIfHealed(Character)
-    updateInfectionLevel()
+---@param Character IsoPlayer 
+---@param BodyDamage BodyDamage 
+---@param BodyParts ArrayList 
+local function HealBodyPartFromInfection(Character, BodyDamage, BodyParts, PlayerScratchTable, PlayerImmunityLevel)
+    for i=1, BodyParts:size()-1 do
+        if BodyDamage:IsBitten(i) == true then
+            BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):SetInfected(false)
+            Character:SayDebug("BodyPart: " .. BodyDamage:getBodyPartName(i) .. " setting Infected to: " .. tostring(BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):IsInfected()))
+        end
+    end
+end
 
-    local Character = getPlayer() 
+--- bool to check whether we want to roll for being immun
+local FreshlyInfected = true
+
+--- calling this OnPlayerUpdate to detect when the player is healed as OnPlayerGetDamage doesn't get called when player is not hurt
+--- but we need to check when he is healed to reset  FreshlyInfected
+--- could maybe be refactored to use OnPlayerGetDamage with a while Loop but not sure about game thread blocking
+---@type Callback_OnPlayerUpdate
+local function CheckIfImmune(Character)
     local BodyDamage = Character:getBodyDamage()
     local BodyParts = BodyDamage:getBodyParts()
     local PlayerScratchTable = Character:getModData().ImmunityTable
     local PlayerImmunityLevel = Character:getModData().ImmunityLevel
 
-    if BodyDamage:isInfected() == true then
-        math.randomseed(GameTime:getHoursSurvived())
-        local randomFloat = math.random()
-        if (randomFloat < PlayerImmunityLevel) then
-            BodyDamage:setInfected(false)
-            BodyDamage:setIsFakeInfected(true)
-            Character:SayDebug("Fake Infected")
-        end
-    end
-
+    --- Closure Guards to check if anytable is NIL
     if PlayerScratchTable == nil then
-        Character:Say("Table was Nil")
+        Character:SayDebug("Table was Nil")
         return
     end
 
     if PlayerImmunityLevel == nil then
-        Character:Say("Player ImmunityLevel is Nil")
+        Character:SayDebug("Player ImmunityLevel is Nil")
         return
+    end
+
+    --- since OnPlayerUpdate is calling per Tick but we only want one Random Seed per "infection" we use a bool
+    --- to force it be only called once per "real" infection
+    --- that means we could get a fake Infection, and afterwards still get a real Infection but after we are really infected
+    --- we can't get a fake infection anymore as FreshlyInfected won't reset anymore
+    if BodyDamage:isInfected() == true and FreshlyInfected then
+        FreshlyInfected = false
+        local randomFloat = ZombRandFloat(0,10)
+        Character:SayDebug("random Float Value is:".. randomFloat)
+        if (randomFloat < PlayerImmunityLevel) then
+        BodyDamage:setInfected(false)
+        BodyDamage:setInfectionLevel(0)
+        BodyDamage:setIsFakeInfected(true)
+        Character:SayDebug("Fake Infected")
+        HealBodyPartFromInfection(Character, BodyDamage, BodyParts, PlayerScratchTable, PlayerImmunityLevel)
+        end
+    end
+
+    if BodyDamage:isInfected() == false then
+        FreshlyInfected = true
     end
 
     for i=1, BodyParts:size()-1 do
         if PlayerScratchTable[BodyDamage:getBodyPartName(i)] == nil then
-            Character:Say("ScratchTable at Index ".. i .. " Was nil")
+            Character:SayDebug("ScratchTable at Index ".. i .. " Was nil")
         end
         local BodyPartName = BodyDamage:getBodyPartName(i)
 
-        if BodyDamage:IsScratched(i) == true then
+        if BodyDamage:IsScratched(i) == true and BodyDamage:isInfected() == false then
             if PlayerScratchTable[BodyPartName].flag ~= true then
                 PlayerScratchTable[BodyPartName].flag = true
                 PlayerScratchTable[BodyPartName].counter = PlayerScratchTable[BodyPartName].counter+1
-                ScratchCounter = ScratchCounter +1
-                Character:Say("Increasing Counter")
-                Character:Say("Setting Flag to " .. tostring(PlayerScratchTable[BodyPartName].flag) .. " for bodypart " .. tostring(BodyPartName))
-                Character:Say("The new ImmunityLevel should be " .. tostring(PlayerImmunityLevel * MULTIPLIER))
-                PlayerImmunityLevel = PlayerImmunityLevel * MULTIPLIER
-                Character:Say("New Immunity Level is: " .. PlayerImmunityLevel .. "and Multiplier is: " .. MULTIPLIER)
+                Character:getModData().ImmunityLevel = PlayerImmunityLevel * MULTIPLIER
+                Character:SayDebug("New Immunity Level is: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel))
 
             end            
         else
             if PlayerScratchTable[BodyPartName].flag == true then
                 PlayerScratchTable[BodyPartName].flag = false
-                Character:Say("Setting Flag to " .. tostring(PlayerScratchTable[BodyPartName].flag) .. " for bodypart " .. tostring(BodyPartName))
             end
         end 
-    
     end
 end
 
 
+
+--- triggering a wrong Table Access Key to see the table in Debug View
 ---@type Callback_OnKeyPressed
 local function DebugPrint(key)
-    print(key)
-    if (key == 67) then
+    if (key == 67) and isDebugEnabled() then
         local table = getPlayer():getModData().ImmunityTable
-        print(table["Pups"].flag)
+        print(table["XXX"].flag)
     end
 end
 
 Events.OnGameStart.Add(SetSandboxSettings)
 Events.OnCreatePlayer.Add(InitPlayer)
-Events.OnPlayerUpdate.Add(CheckIfHealed)
+Events.OnPlayerUpdate.Add(CheckIfImmune)
 Events.OnKeyPressed.Add(DebugPrint)
+Events.OnPlayerGetDamage.Add(UpdateScratchCount)
