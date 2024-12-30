@@ -1,6 +1,7 @@
 Sandbox_EN = {
     Sandbox_Immunity = "ImmunityMod",
-    Sandbox_Immunity_InitialChance = "BLABLABLA"
-    Sandbox_Immunity_Multiplier = "The Multiplier which will be used to calculate the possible immunity"
-    Sandbox_Immunity_MaxImmunity = "Maximal Mögliche Immunität"
+    Sandbox_Immunity_InitialChance = "Initial Chance to be Immune"
+    Sandbox_Immunity_Multiplier = "Scratch Multiplier for Immunity"
+    Sandbox_Immunity_MaxImmunity = "Max Reachable Immunity"
+    Sandbox_Immunity_DegradeOverTime = "Reduce Immunity over time"
 }

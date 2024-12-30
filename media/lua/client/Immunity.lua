@@ -6,7 +6,7 @@ require "ISUI/ISCharacterScreen"
 require "ISUI/ISPanelJoypad"
 require ('ISUI/ISPanelJoypad')
 require('ISUI/ISCharacterScreen')
-require('math')
+require('PZMath')
 
 ----------------------- SETUP -------------------------------------
 
@@ -29,6 +29,9 @@ end
 ---@param DamageType? string
 ---@param Damage? number
 local function UpdateScratchCount(Character, DamageType, Damage)
+    if Character ~= getPlayer() then
+        return
+    end
     ---@type table<string, {counter: number, flag: boolean}>
         local ImmunityTable = Character:getModData().ImmunityTable
         if ImmunityTable == nil then
@@ -58,7 +61,7 @@ local function InitPlayer(playernum, player)
     end 
 
     if playertable.ImmunityLevel == nil then
-        playertable.ImmunityLevel = STARTCHANCE
+        playertable.ImmunityLevel = SandboxVars.Immunity.InitialChance
     end
 
     UpdateScratchCount(player)
@@ -155,7 +158,7 @@ local function CheckIfImmune(Character)
     --- we can't get a fake infection anymore as FreshlyInfected won't reset anymore
     if BodyDamage:isInfected() == true and FreshlyInfected then
         FreshlyInfected = false
-        local randomFloat = ZombRandFloat(0,10)
+        local randomFloat = ZombRandFloat(1,100)
         Character:SayDebug("random Float Value is:".. randomFloat)
         if (randomFloat < PlayerImmunityLevel) then
         BodyDamage:setInfected(false)
@@ -180,7 +183,7 @@ local function CheckIfImmune(Character)
             if PlayerScratchTable[BodyPartName].flag ~= true then
                 PlayerScratchTable[BodyPartName].flag = true
                 PlayerScratchTable[BodyPartName].counter = PlayerScratchTable[BodyPartName].counter+1
-                Character:getModData().ImmunityLevel = PlayerImmunityLevel * MULTIPLIER
+                Character:getModData().ImmunityLevel =  PZMath.clampFloat(PlayerImmunityLevel * MULTIPLIER,0,SandboxVars.Immunity.Max_Immunity)
                 Character:SayDebug("New Immunity Level is: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel))
 
             end            
@@ -190,6 +193,17 @@ local function CheckIfImmune(Character)
             end
         end 
     end
+end
+
+local function ReduceImmunity()
+
+    if SandboxVars.Immunity.DegradeOverTime == false then
+        return
+    end
+
+    getPlayer():SayDebug("Reducing ImmunityLevel")
+    getPlayer():getModData().ImmunityLevel = getPlayer():getModData().ImmunityLevel * ZombRandFloat(0.5, 0.75)
+    getPlayer():SayDebug("New Immunity is now: " .. getPlayer():getModData().ImmunityLevel)
 end
 
 
@@ -208,3 +222,4 @@ Events.OnCreatePlayer.Add(InitPlayer)
 Events.OnPlayerUpdate.Add(CheckIfImmune)
 Events.OnKeyPressed.Add(DebugPrint)
 Events.OnPlayerGetDamage.Add(UpdateScratchCount)
+Events.EveryDays.Add(ReduceImmunity)
