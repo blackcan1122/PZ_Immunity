@@ -54,7 +54,7 @@ local function InitPlayer(playernum, player)
     local playertable = player:getModData()
 
     if playertable.ImmunityTable == nil then
-        for i=1, BodyParts:size()-1 do
+        for i=0, BodyParts:size()-1 do
             ScratchTable[BodyDamage:getBodyPartName(i)] = createStruct(0,false)
         end
         playertable.ImmunityTable = ScratchTable
@@ -66,33 +66,32 @@ local function InitPlayer(playernum, player)
 
     UpdateScratchCount(player)
 end
+
 ----------------------- SETUP END -------------------------------------
 ----------------------- UI -------------------------------------
-local original_createChildren = ISCharacterScreen.createChildren
+-- local original_createChildren = ISCharacterScreen.createChildren
 
-local MyInfoPanel = ISPanel:derive("InfoPanel")
+-- local MyInfoPanel = ISPanel:derive("InfoPanel")
 
-function MyInfoPanel:new(x, y, width, height)
-    local o = ISPanel:new(x, y, width, height)
-    setmetatable(o, self)
-    self.__index = self
-    return o
-end
+-- function MyInfoPanel:new(x, y, width, height)
+--     local o = ISPanel:new(x, y, width, height)
+--     setmetatable(o, self)
+--     self.__index = self
+--     return o
+-- end
 
 
-function MyInfoPanel:render()
-    ISPanel.render(self)
-    self:drawText("ImmunityLevel: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel), 0, 0, 1, 1, 1, 1, UIFont.Small)
-    self:drawText("ScratchCounter: " .. tostring(ScratchCounter), 0, 10, 1, 1, 1, 1, UIFont.Small)
-end
+-- function MyInfoPanel:render()
+--     ISPanel.render(self)
+--     self:drawText("ImmunityLevel: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel), 0, 0, 1, 1, 1, 1, UIFont.Small)
+--     self:drawText("ScratchCounter: " .. tostring(ScratchCounter), 0, 10, 1, 1, 1, 1, UIFont.Small)
+-- end
 
-function ISCharacterScreen:createChildren()
-    original_createChildren(self)
-    local infoPanel = MyInfoPanel:new(170, 200, 150, 50)
-    self:addChild(infoPanel)
-end
-
------------------------ UI END -------------------------------------
+-- function ISCharacterScreen:createChildren()
+--     original_createChildren(self)
+--     local infoPanel = MyInfoPanel:new(170, 200, 150, 50)
+--     self:addChild(infoPanel)
+-- end
 
 -------------------------------------------------------------------------------------------------------------------
 --- right now not needed, if we ever need to update something in synch with the UI we could call the functions here
@@ -101,7 +100,8 @@ end
 --     original_prerender(self)
 -- end
 -------------------------------------------------------------------------------------------------------------------
-
+---
+----------------------- UI END -------------------------------------
 
 local function SetSandboxSettings()
     MULTIPLIER = SandboxVars.Immunity.Multiplier
@@ -120,7 +120,7 @@ end
 ---@param BodyDamage BodyDamage 
 ---@param BodyParts ArrayList 
 local function HealBodyPartFromInfection(Character, BodyDamage, BodyParts, PlayerScratchTable, PlayerImmunityLevel)
-    for i=1, BodyParts:size()-1 do
+    for i=0, BodyParts:size()-1 do
         if BodyDamage:IsBitten(i) == true then
             BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):SetInfected(false)
             Character:SayDebug("BodyPart: " .. BodyDamage:getBodyPartName(i) .. " setting Infected to: " .. tostring(BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):IsInfected()))
@@ -173,7 +173,7 @@ local function CheckIfImmune(Character)
         FreshlyInfected = true
     end
 
-    for i=1, BodyParts:size()-1 do
+    for i=0, BodyParts:size()-1 do
         if PlayerScratchTable[BodyDamage:getBodyPartName(i)] == nil then
             Character:SayDebug("ScratchTable at Index ".. i .. " Was nil")
         end
