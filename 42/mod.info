@@ -1,0 +1,10 @@
+name=Immunity
+poster=poster.png
+icon=poster.png
+id=immunityMod
+description=Immunity Mod to make being bitten more tense
+url=https://github.com/blackcan1122
+pzversion=42
+modversion=1.3.0
+versionMin=42.0.0
+author=Blackcan

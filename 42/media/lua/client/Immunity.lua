@@ -35,7 +35,7 @@ local function UpdateScratchCount(Character, DamageType, Damage)
     ---@type table<string, {counter: number, flag: boolean}>
         local ImmunityTable = Character:getModData().ImmunityTable
         if ImmunityTable == nil then
-            -- Character:SayDebug("ImmunityTable is Nil")
+            --Character:SayDebug("ImmunityTable is Nil")
             return
         end
         ScratchCounter = 0
@@ -123,7 +123,7 @@ local function HealBodyPartFromInfection(Character, BodyDamage, BodyParts, Playe
     for i=0, BodyParts:size()-1 do
         if BodyDamage:IsBitten(i) == true then
             BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):SetInfected(false)
-            -- Character:SayDebug("BodyPart: " .. BodyDamage:getBodyPartName(i) .. " setting Infected to: " .. tostring(BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):IsInfected()))
+            --Character:SayDebug("BodyPart: " .. BodyDamage:getBodyPartName(i) .. " setting Infected to: " .. tostring(BodyDamage:getBodyPart(BodyPartType.FromIndex(i)):IsInfected()))
         end
     end
 end
@@ -143,12 +143,12 @@ local function CheckIfImmune(Character)
 
     --- Closure Guards to check if anytable is NIL
     if PlayerScratchTable == nil then
-        -- Character:SayDebug("Table was Nil")
+        --Character:SayDebug("Table was Nil")
         return
     end
 
     if PlayerImmunityLevel == nil then
-        -- Character:SayDebug("Player ImmunityLevel is Nil")
+        --Character:SayDebug("Player ImmunityLevel is Nil")
         return
     end
 
@@ -159,12 +159,12 @@ local function CheckIfImmune(Character)
     if BodyDamage:isInfected() == true and FreshlyInfected then
         FreshlyInfected = false
         local randomFloat = ZombRandFloat(1,100)
-        -- Character:SayDebug("random Float Value is:".. randomFloat)
+        --Character:SayDebug("random Float Value is:".. randomFloat)
         if (randomFloat < PlayerImmunityLevel) then
         BodyDamage:setInfected(false)
         BodyDamage:setInfectionLevel(0)
         BodyDamage:setIsFakeInfected(true)
-        -- Character:SayDebug("Fake Infected")
+        --Character:SayDebug("Fake Infected")
         HealBodyPartFromInfection(Character, BodyDamage, BodyParts, PlayerScratchTable, PlayerImmunityLevel)
         end
     end
@@ -175,7 +175,7 @@ local function CheckIfImmune(Character)
 
     for i=0, BodyParts:size()-1 do
         if PlayerScratchTable[BodyDamage:getBodyPartName(i)] == nil then
-            -- Character:SayDebug("ScratchTable at Index ".. i .. " Was nil")
+            --Character:SayDebug("ScratchTable at Index ".. i .. " Was nil")
         end
         local BodyPartName = BodyDamage:getBodyPartName(i)
 
@@ -184,7 +184,7 @@ local function CheckIfImmune(Character)
                 PlayerScratchTable[BodyPartName].flag = true
                 PlayerScratchTable[BodyPartName].counter = PlayerScratchTable[BodyPartName].counter+1
                 Character:getModData().ImmunityLevel =  PZMath.clampFloat(PlayerImmunityLevel * MULTIPLIER,0,SandboxVars.Immunity.Max_Immunity)
-                -- Character:SayDebug("New Immunity Level is: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel))
+                --Character:SayDebug("New Immunity Level is: " .. string.format("%.4f", getPlayer():getModData().ImmunityLevel))
 
             end            
         else
